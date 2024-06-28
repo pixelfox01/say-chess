@@ -72,3 +72,23 @@ def make_move():
 def check_game_status(game_id):
     game = Game.query.get_or_404(game_id)
     return jsonify({"status": game.game_status})
+
+
+@game_bp.route("/<int:game_id>/end", methods=["POST"])
+def end_game(game_id):
+    data = request.get_json()
+    game_result = data.get("result")
+    try:
+        with db.session.begin():
+            game = Game.query.get_or_404(game_id)
+            if game.game_status != "ongoing":
+                abort(403, description="Game has already ended!")
+            game.game_status = game_result
+            game.ended_at = db.func.current_timestamp()
+            db.session.commit()
+
+        return jsonify({"status": "Game ended", "result": game_result})
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        abort(500, description="An error occurred while processing the move.")
