@@ -28,14 +28,12 @@ def start_game():
         abort(403, description="One of the players is already in a game.")
         # return jsonify({"error": "One of the players is already in a game."}, 400)
 
-    current_player = "white"
     game_status = "ongoing"
     starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     new_game = Game(
         player1_id=player1_id,
         player2_id=player2_id,
-        current_player=current_player,
         game_status=game_status,
         fen=starting_fen,
     )
@@ -91,15 +89,9 @@ def make_move():
                 or 0
             )
             move_number = current_max_move_number + 1
-            player_id = (
-                game.player1_id if game.current_player == "white" else game.player2_id
-            )
 
-            new_move = Move(
-                game_id=game_id, player_id=player_id, move=move, move_number=move_number
-            )
+            new_move = Move(game_id=game_id, move=move, move_number=move_number)
 
-            game.current_player = "black" if game.current_player == "white" else "white"
             game.fen = board.fen()
             db.session.add(new_move)
             db.session.commit()

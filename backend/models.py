@@ -14,7 +14,6 @@ class Game(db.Model):
     player2_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     started_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     ended_at = db.Column(db.DateTime, nullable=True)
-    current_player = db.Column(db.Enum("white", "black", name="color"))
     game_status = db.Column(
         db.Enum("white", "black", "draw", "ongoing", "aborted", name="game_status"),
         nullable=False,
@@ -27,6 +26,5 @@ class Move(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey("game.id"), nullable=False)
     move_number = db.Column(db.Integer, nullable=False)
-    player_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     move = db.Column(db.String(10), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
