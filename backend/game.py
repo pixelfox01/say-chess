@@ -3,6 +3,7 @@ from db import db
 from models import Game, Move
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_, func
+import chess
 
 game_bp = Blueprint("game", __name__)
 
@@ -29,7 +30,7 @@ def start_game():
 
     current_player = "white"
     game_status = "ongoing"
-    starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     new_game = Game(
         player1_id=player1_id,
@@ -55,6 +56,7 @@ def get_game_details(game_id):
             "ended_at": game.ended_at,
             "current_player": game.current_player,
             "game_result": game.game_result,
+            "fen": game.fen,
         }
     )
 
@@ -72,6 +74,16 @@ def make_move():
             if game.game_status != "ongoing":
                 abort(403, description="Game has already ended.")
 
+            board = chess.Board(game.fen)
+            try:
+                board.push_san(move)
+            except chess.InvalidMoveError:
+                abort(403, description="Move is invalid!")
+            except chess.IllegalMoveError:
+                abort(403, description="Move is illegal!")
+            except chess.AmbiguousMoveError:
+                abort(403, description="Ambiguous move!")
+
             current_max_move_number = (
                 db.session.query(func.max(Move.move_number))
                 .filter_by(game_id=game_id)
@@ -88,6 +100,7 @@ def make_move():
             )
 
             game.current_player = "black" if game.current_player == "white" else "white"
+            game.fen = board.fen()
             db.session.add(new_move)
             db.session.commit()
 

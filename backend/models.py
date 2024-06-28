@@ -20,7 +20,7 @@ class Game(db.Model):
         nullable=False,
     )
 
-    fen = db.Column(db.String(100), nullable=False)
+    fen = db.Column(db.String(150), nullable=False)
 
 
 class Move(db.Model):
