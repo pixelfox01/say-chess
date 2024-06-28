@@ -1,33 +1,25 @@
 import os
-import psycopg2
-from dotenv import load_dotenv
 from flask import Flask
+from dotenv import load_dotenv
+from db import db, setup_db
+from game import game_bp  # Import the Blueprint
 
-
-def setup_db():
-    db_url = os.environ.get("DATABASE_URL")
-    connection = psycopg2.connect(db_url)
-
-    try:
-        connection = psycopg2.connect(db_url)
-        connection.autocommit = True
-
-        with connection.cursor() as cursor:
-            with open("schema.sql", "r") as schema_file:
-                schema_sql = schema_file.read()
-                cursor.execute(schema_sql)
-                print("Schema executed successfully.")
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(f"Error executing schema: {error}")
-
-    finally:
-        if connection:
-            connection.close()
-            print("Database connection closed.")
-
-
+# Load environment variables from .env file
 load_dotenv()
-app = Flask(__name__)
 
-setup_db()
+# Create and configure the app
+app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialize the database
+db.init_app(app)
+
+# Setup the database (execute schema.sql and create tables)
+setup_db(app)
+
+# Register the game Blueprint
+app.register_blueprint(game_bp, url_prefix="/game")
+
+if __name__ == "__main__":
+    app.run(debug=True)
