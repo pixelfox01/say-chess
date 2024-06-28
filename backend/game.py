@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from db import db
 from models import Game, Move
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import or_
 
 game_bp = Blueprint("game", __name__)
 
@@ -11,6 +12,21 @@ def start_game():
     data = request.get_json()
     player1_id = data.get("player1_id")
     player2_id = data.get("player2_id")
+
+    ongoing_game = Game.query.filter(
+        Game.game_status == "ongoing",
+        or_(
+            Game.player1_id == player1_id,
+            Game.player2_id == player1_id,
+            Game.player1_id == player2_id,
+            Game.player2_id == player2_id,
+        ),
+    ).first()
+
+    if ongoing_game:
+        abort(403, description="One of the players is already in a game.")
+        # return jsonify({"error": "One of the players is already in a game."}, 400)
+
     current_player = "white"
     game_status = "ongoing"
     new_game = Game(
