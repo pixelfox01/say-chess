@@ -9,9 +9,12 @@ DROP TYPE IF EXISTS game_status CASCADE;
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
     username VARCHAR(25) UNIQUE NOT NULL,
-    PASSWORD TEXT NOT NULL,
+    password TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO "user" (username, password)
+VALUES ('imran', '123456'), ('cinan', '123456'), ('alex', '123456'), ('frank', '123456');
 
 CREATE TYPE game_status AS ENUM (
     'white',
