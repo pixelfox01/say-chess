@@ -18,7 +18,6 @@ class Game(db.Model):
         db.Enum("white", "black", "draw", "ongoing", "aborted", name="game_status"),
         nullable=False,
     )
-
     fen = db.Column(db.String(150), nullable=False)
 
 
@@ -28,3 +27,4 @@ class Move(db.Model):
     move_number = db.Column(db.Integer, nullable=False)
     move = db.Column(db.String(10), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    fen = db.Column(db.String(150), nullable=False)

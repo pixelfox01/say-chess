@@ -59,10 +59,9 @@ def get_game_details(game_id):
     )
 
 
-@game_bp.route("/move", methods=["POST"])
-def make_move():
+@game_bp.route("/<int:game_id>/move", methods=["POST"])
+def make_move(game_id):
     data = request.get_json()
-    game_id = data.get("game_id")
     move = data.get("move")
 
     try:
@@ -89,10 +88,13 @@ def make_move():
                 or 0
             )
             move_number = current_max_move_number + 1
+            cur_fen = board.fen()
 
-            new_move = Move(game_id=game_id, move=move, move_number=move_number)
+            new_move = Move(
+                game_id=game_id, move=move, move_number=move_number, fen=cur_fen
+            )
 
-            game.fen = board.fen()
+            game.fen = cur_fen
             db.session.add(new_move)
             db.session.commit()
 

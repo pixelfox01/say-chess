@@ -40,6 +40,7 @@ CREATE TABLE "move" (
     move_number INT NOT NULL,
     "move" VARCHAR(10) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fen VARCHAR(150) NOT NULL,
     CONSTRAINT fk_game FOREIGN KEY (game_id) REFERENCES game (id) ON DELETE CASCADE
 );
 
