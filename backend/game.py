@@ -12,8 +12,12 @@ def start_game():
     player1_id = data.get("player1_id")
     player2_id = data.get("player2_id")
     current_player = "white"
+    game_status = "ongoing"
     new_game = Game(
-        player1_id=player1_id, player2_id=player2_id, current_player=current_player
+        player1_id=player1_id,
+        player2_id=player2_id,
+        current_player=current_player,
+        game_status=game_status,
     )
     db.session.add(new_game)
     db.session.commit()
@@ -62,3 +66,9 @@ def make_move():
     except SQLAlchemyError as e:
         db.session.rollback()
         abort(500, description="An error occurred while processing the move.")
+
+
+@game_bp.route("/<int:game_id>/status", methods=["GET"])
+def check_game_status(game_id):
+    game = Game.query.get_or_404(game_id)
+    return jsonify({"status": game.game_status})

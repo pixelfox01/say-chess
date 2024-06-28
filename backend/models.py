@@ -15,8 +15,8 @@ class Game(db.Model):
     started_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     ended_at = db.Column(db.DateTime, nullable=True)
     current_player = db.Column(db.Enum("white", "black", name="color"))
-    game_result = db.Column(
-        db.Enum("white", "black", "draw", name="game_result"), nullable=True
+    game_status = db.Column(
+        db.Enum("white", "black", "draw", "ongoing", "aborted", name="game_status")
     )
 
 

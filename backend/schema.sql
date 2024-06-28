@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS game CASCADE;
 
 DROP TABLE IF EXISTS "user" CASCADE;
 
-DROP TYPE IF EXISTS game_result CASCADE;
+DROP TYPE IF EXISTS game_status CASCADE;
 
 DROP TYPE IF EXISTS color CASCADE;
 
@@ -15,10 +15,12 @@ CREATE TABLE "user" (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TYPE game_result AS ENUM (
+CREATE TYPE game_status AS ENUM (
     'white',
     'black',
-    'draw'
+    'draw',
+    'ongoing',
+    'aborted'
 );
 
 CREATE TYPE color AS ENUM (
@@ -33,7 +35,7 @@ CREATE TABLE game (
     started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP,
     current_player color,
-    game_result game_result,
+    game_status game_status NOT NULL,
     CONSTRAINT fk_p1 FOREIGN KEY (player1_id) REFERENCES "user" (id) ON DELETE CASCADE,
     CONSTRAINT fk_p2 FOREIGN KEY (player2_id) REFERENCES "user" (id) ON DELETE CASCADE
 );
