@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from db import db
 from models import Game, Move
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 game_bp = Blueprint("game", __name__)
 
@@ -60,20 +60,31 @@ def get_game_details(game_id):
 def make_move():
     data = request.get_json()
     game_id = data.get("game_id")
-    player_id = data.get("player_id")
     move = data.get("move")
-    move_number = data.get("move_number")
 
     try:
         with db.session.begin():
             game = Game.query.get_or_404(game_id)
 
-            if player_id not in [game.player1_id, game.player2_id]:
-                abort(403, description="Player is not part of the game.")
+            if game.game_status != "ongoing":
+                abort(403, description="Game has already ended.")
+
+            current_max_move_number = (
+                db.session.query(func.max(Move.move_number))
+                .filter_by(game_id=game_id)
+                .scalar()
+                or 0
+            )
+            move_number = current_max_move_number + 1
+            player_id = (
+                game.player1_id if game.current_player == "white" else game.player2_id
+            )
 
             new_move = Move(
                 game_id=game_id, player_id=player_id, move=move, move_number=move_number
             )
+
+            game.current_player = "black" if game.current_player == "white" else "white"
             db.session.add(new_move)
             db.session.commit()
 
