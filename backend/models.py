@@ -16,8 +16,11 @@ class Game(db.Model):
     ended_at = db.Column(db.DateTime, nullable=True)
     current_player = db.Column(db.Enum("white", "black", name="color"))
     game_status = db.Column(
-        db.Enum("white", "black", "draw", "ongoing", "aborted", name="game_status")
+        db.Enum("white", "black", "draw", "ongoing", "aborted", name="game_status"),
+        nullable=False,
     )
+
+    fen = db.Column(db.String(100), nullable=False)
 
 
 class Move(db.Model):

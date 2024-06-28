@@ -36,6 +36,7 @@ CREATE TABLE game (
     ended_at TIMESTAMP,
     current_player color,
     game_status game_status NOT NULL,
+    fen VARCHAR(100) NOT NULL,
     CONSTRAINT fk_p1 FOREIGN KEY (player1_id) REFERENCES "user" (id) ON DELETE CASCADE,
     CONSTRAINT fk_p2 FOREIGN KEY (player2_id) REFERENCES "user" (id) ON DELETE CASCADE
 );

@@ -29,11 +29,14 @@ def start_game():
 
     current_player = "white"
     game_status = "ongoing"
+    starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
     new_game = Game(
         player1_id=player1_id,
         player2_id=player2_id,
         current_player=current_player,
         game_status=game_status,
+        fen=starting_fen,
     )
     db.session.add(new_game)
     db.session.commit()
