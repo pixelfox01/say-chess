@@ -251,5 +251,3 @@ def draw_game(game_id):
                 "game_status": result[1],
             }
         )
-
-

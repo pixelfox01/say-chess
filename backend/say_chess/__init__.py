@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from dotenv import load_dotenv
-from . import db, game
+from . import db, game, speech
 
 
 def create_app(test_config=None):
@@ -20,5 +20,6 @@ def create_app(test_config=None):
 
     # Register the game Blueprint
     app.register_blueprint(game.bp, url_prefix="/game")
+    app.register_blueprint(speech.bp, url_prefix="/speech")
 
     return app
