@@ -74,6 +74,24 @@ def get_game_details(game_id):
         )
 
 
+@bp.route("/<int:game_id>/status", methods=["GET"])
+def game_status(game_id):
+    db = get_db()
+    with db.cursor() as cursor:
+        game_query = """
+            SELECT game_status
+            FROM game
+            WHERE id = %s
+        """
+        cursor.execute(game_query, (game_id,))
+        game = cursor.fetchone()
+
+        if game is None:
+            abort(404, description=f"Could not find game with ID {game_id}!")
+
+        return jsonify({"game_status": game[0]})
+
+
 @bp.route("/<int:game_id>/move", methods=["POST"])
 def make_move(game_id):
     data = request.get_json()
