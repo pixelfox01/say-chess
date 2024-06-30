@@ -47,18 +47,6 @@ CREATE TABLE "move" (
     CONSTRAINT fk_game FOREIGN KEY (game_id) REFERENCES game (id) ON DELETE CASCADE
 );
 
-INSERT INTO "user" (username, password)
-VALUES 
-  ('imran', '123456'), 
-  ('cinan', '123456'), 
-  ('alex', '123456'), 
-  ('frank', '123456');
-
-INSERT INTO game (player1_id, player2_id, game_status, fen)
-VALUES 
-  (1, 2, 'ongoing', '7K/6q1/8/8/8/8/2k5/8 w - - 1 2'), 
-  (3, 4, 'ongoing', 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-
 CREATE INDEX idx_game_player1_id ON game (player1_id);
 
 CREATE INDEX idx_game_player2_id ON game (player2_id);
