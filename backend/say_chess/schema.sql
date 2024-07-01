@@ -8,6 +8,7 @@ DROP TYPE IF EXISTS game_status CASCADE;
 
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
+    uid UUID DEFAULT gen_random_uuid(),
     username VARCHAR(25) UNIQUE NOT NULL,
     password TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -27,6 +28,7 @@ CREATE TYPE game_status AS ENUM (
 
 CREATE TABLE game (
     id SERIAL PRIMARY KEY,
+    uid UUID DEFAULT gen_random_uuid(),
     player1_id INT NOT NULL,
     player2_id INT,
     started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -39,6 +41,7 @@ CREATE TABLE game (
 
 CREATE TABLE "move" (
     id SERIAL PRIMARY KEY,
+    uid UUID DEFAULT gen_random_uuid(),
     game_id INT NOT NULL,
     move_number INT NOT NULL,
     "move" VARCHAR(10) NOT NULL,
@@ -46,6 +49,8 @@ CREATE TABLE "move" (
     fen VARCHAR(150) NOT NULL,
     CONSTRAINT fk_game FOREIGN KEY (game_id) REFERENCES game (id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_game_uid ON game (uid);
 
 CREATE INDEX idx_game_player1_id ON game (player1_id);
 

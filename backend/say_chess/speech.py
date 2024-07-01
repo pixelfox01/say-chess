@@ -66,41 +66,12 @@ def transcribe_move():
         abort(400, description="Invalid file type!")
 
 
-@bp.route("/upload-test", methods=["GET", "POST"])
-def upload_file():
-    if request.method == "POST":
-        if "file" not in request.files:
-            flash("No file found!")
-            return "Ok"
-
-        file = request.files["file"]
-        if file.filename == "":
-            flash("No selected file!")
-            return "Ok"
-
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join("./say_chess/", filename))
-            return "Ok"
-
-    return """
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
-    """
-
-
 def transcribe_gcs(audio_content):
     client = speech.SpeechClient()
 
     audio = speech.RecognitionAudio(content=audio_content)
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
         audio_channel_count=1,
         speech_contexts=[SPEECH_CONTEXT],
         language_code="en-US",
