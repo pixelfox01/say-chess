@@ -1,8 +1,23 @@
-import os
-from flask import Blueprint, abort, flash, jsonify, request
-from werkzeug.utils import secure_filename
+from chess import Move
+from flask import Blueprint, jsonify, request
 from google.cloud import speech
+from say_chess.utils import (
+    ERROR_CODES,
+    create_error_response,
+    create_success_response,
+)
 
+ERROR_CODES.update(
+    {
+        "NO_FILE_PART": {"code": 1009, "message": "No file part in the request!"},
+        "NO_SELECTED_FILE": {"code": 1010, "message": "No selected file!"},
+        "INVALID_FILE_TYPE": {"code": 1011, "message": "Invalid file type!"},
+        "INVALID_MOVE_TRANSCRIPT": {
+            "code": 1012,
+            "message": "Could not convert transcript to a valid move!",
+        },
+    }
+)
 
 ALLOWED_EXTENSIONS = {"wav"}
 
@@ -36,15 +51,15 @@ def allowed_file(filename):
 bp = Blueprint("speech", __name__)
 
 
-@bp.route("/transcribe-move", methods=["GET", "POST"])
+@bp.route("/transcribe-move", methods=["POST"])
 def transcribe_move():
     if "file" not in request.files:
-        abort(400, description="No file part in the request!")
+        create_error_response("NO_FILE_PART", 400)
 
     file = request.files["file"]
 
     if file.filename == "":
-        abort(400, description="No selected file!")
+        create_error_response("NO_SELECTED_FILE", 400)
 
     if file and allowed_file(file.filename):
         audio_content = file.read()
@@ -53,17 +68,13 @@ def transcribe_move():
 
         san_move = get_move_from_transcription(transcript)
         if san_move is None:
-            abort(
-                403,
-                {
-                    "transcript": transcript,
-                    "message": "Could not convert transcript to a valid move!",
-                },
-            )
+            create_error_response("INVALID_MOVE_TRANSCRIPT", 403)
 
-        return jsonify({"transcript": transcript, "san_move": san_move})
+        response = {"transcript": transcript, "san_move": san_move}
+
+        return create_success_response(response, "Move transcribed successfully")
     else:
-        abort(400, description="Invalid file type!")
+        create_error_response("INVALID_FILE_TYPE", 400)
 
 
 def transcribe_gcs(audio_content):
@@ -111,10 +122,23 @@ def get_move_from_transcription(transcription):
         return None
 
     piece = split_transcription[0]
+    coord = split_transcription[1]
+
+    if piece in [
+        "a8",
+        "b8",
+        "c8",
+        "d8",
+        "e8",
+        "f8",
+        "g8",
+        "h8",
+    ] and coord in PIECES.remove("Pawn"):
+        return f"{piece}={coord}"
+
     if piece not in san_mappings.keys():
         return None
 
-    coord = split_transcription[1]
     if coord not in ALL_COORDS:
         return None
 

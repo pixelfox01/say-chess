@@ -1,8 +1,27 @@
 from flask import Blueprint, make_response, request, jsonify
 from werkzeug.exceptions import HTTPException
 from say_chess.db import get_db
-from say_chess.utils import create_success_response, create_error_response
+from say_chess.utils import create_success_response, create_error_response, ERROR_CODES
 import chess
+
+ERROR_CODES.update(
+    {
+        "PLAYER_IN_GAME": {
+            "code": 1001,
+            "message": "One of the players is already in a game!",
+        },
+        "INVALID_MOVE": {"code": 1002, "message": "Move is invalid!"},
+        "ILLEGAL_MOVE": {"code": 1003, "message": "Move is illegal!"},
+        "AMBIGUOUS_MOVE": {"code": 1004, "message": "Ambiguous move!"},
+        "GAME_NOT_FOUND": {"code": 1005, "message": "Game not found!"},
+        "GAME_ENDED": {"code": 1006, "message": "Game has already ended!"},
+        "GAME_STARTED": {
+            "code": 1007,
+            "message": "Game has already started, cannot abort!",
+        },
+        "UPDATE_FAILED": {"code": 1008, "message": "Failed to update game status!"},
+    }
+)
 
 bp = Blueprint("game", __name__)
 
@@ -57,7 +76,7 @@ def start_game():
     ongoing_game = cursor.fetchone()
 
     if ongoing_game:
-        return create_error_response("PLAYER_IN_GAME")
+        return create_error_response("PLAYER_IN_GAME", 403)
 
     game_status = "ongoing"
     starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -88,7 +107,7 @@ def get_game_details(game_uid):
         cursor.execute(query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND")
+            return create_error_response("GAME_NOT_FOUND", 404)
 
         response_data = {
             "uid": game[0],
@@ -118,7 +137,7 @@ def game_status(game_uid):
         game = cursor.fetchone()
 
         if game is None:
-            return create_error_response("GAME_NOT_FOUND")
+            return create_error_response("GAME_NOT_FOUND", 404)
 
         return create_success_response(game[0], "Game status retrieved successfully")
 
@@ -126,7 +145,7 @@ def game_status(game_uid):
 @bp.route("/<uuid:game_uid>/move", methods=["POST"])
 def make_move(game_uid):
     data = request.get_json()
-    move = data.get("move")
+    san_move = data.get("move")
 
     db = get_db()
     with db.cursor() as cursor:
@@ -139,23 +158,24 @@ def make_move(game_uid):
         game = cursor.fetchone()
 
         if game is None:
-            return create_error_response("GAME_NOT_FOUND")
+            return create_error_response("GAME_NOT_FOUND", 404)
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED")
+            return create_error_response("GAME_ENDED", 403)
 
         game_fen = game[7]
 
         board = chess.Board(game_fen)
         try:
-            board.push_san(move)
+            uci_move = board.parse_san(san_move)
+            board.push_san(san_move)
         except chess.InvalidMoveError:
-            return create_error_response("INVALID_MOVE")
+            return create_error_response("INVALID_MOVE", 403)
         except chess.IllegalMoveError:
-            return create_error_response("ILLEGAL_MOVE")
+            return create_error_response("ILLEGAL_MOVE", 403)
         except chess.AmbiguousMoveError:
-            return create_error_response("AMBIGUOUS_MOVE")
+            return create_error_response("AMBIGUOUS_MOVE", 403)
 
         max_move_num_query = """
             SELECT COALESCE(MAX(move_number), 0)
@@ -175,7 +195,7 @@ def make_move(game_uid):
                 %s, %s, %s, %s
             )
         """
-        cursor.execute(new_move_query, (game_id, move_number, move, cur_fen))
+        cursor.execute(new_move_query, (game_id, move_number, san_move, cur_fen))
 
         update_game_fen_query = """
             UPDATE game
@@ -189,7 +209,7 @@ def make_move(game_uid):
             cursor.execute("SELECT fen FROM game WHERE id = %s", (game_id,))
             result = cursor.fetchone()
             if result is None:
-                return create_error_response("GAME_NOT_FOUND")
+                return create_error_response("GAME_NOT_FOUND", 404)
 
             cur_player = result[0].split()[1]
             end_game_query = """
@@ -210,8 +230,9 @@ def make_move(game_uid):
 
         db.commit()
 
-        # return jsonify({"message": "Move processed!", "game_status": game_status})
-        return create_success_response(game_status, "Move processed successfully")
+        response = {"uci_move": uci_move, "game_status": game_status}
+
+        return create_success_response(response, "Move processed successfully")
 
 
 @bp.route("/<uuid:game_uid>/abort", methods=["POST"])
@@ -226,11 +247,11 @@ def abort_game(game_uid):
         cursor.execute(game_query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND")
+            return create_error_response("GAME_NOT_FOUND", 404)
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED")
+            return create_error_response("GAME_ENDED", 403)
 
         moves_query = """
             SELECT id
@@ -240,7 +261,7 @@ def abort_game(game_uid):
         game_id = game[0]
         cursor.execute(moves_query, (game_id,))
         if cursor.fetchone() is not None:
-            return create_error_response("GAME_STARTED")
+            return create_error_response("GAME_STARTED", 403)
 
         game_abort_query = """
             UPDATE game
@@ -252,7 +273,7 @@ def abort_game(game_uid):
         result = cursor.fetchone()
 
         if result is None:
-            return create_error_response("UPDATE_FAILED")
+            return create_error_response("UPDATE_FAILED", 500)
 
         db.commit()
 
@@ -281,11 +302,11 @@ def draw_game(game_uid):
         cursor.execute(game_query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND")
+            return create_error_response("GAME_NOT_FOUND", 404)
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED")
+            return create_error_response("GAME_ENDED", 403)
 
         game_end_query = """
             UPDATE game
@@ -298,7 +319,7 @@ def draw_game(game_uid):
         result = cursor.fetchone()
 
         if result is None:
-            return create_error_response("UPDATE_FAILED")
+            return create_error_response("UPDATE_FAILED", 500)
 
         db.commit()
 
