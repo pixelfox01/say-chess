@@ -78,12 +78,7 @@ def transcribe_move():
     if file and allowed_file(file.filename):
         audio_content = file.read()
 
-        fen = request.form.get(
-            "fen",
-            Board(
-                "r1bqkb1r/ppppnppp/5n2/4p3/3NP3/2N5/PPPP1PPP/R1BQKB1R w KQkq - 6 5"
-            ).fen(),
-        )
+        fen = request.form.get("fen", Board().fen())
         board = Board(fen)
 
         speech_context = get_speech_context_from_board(board)
