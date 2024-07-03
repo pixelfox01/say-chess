@@ -54,7 +54,6 @@ def san_to_spoken(san_move):
         coord, promotion = san_move.split("=")
         return f"{coord} {piece_names[promotion]}"
 
-    print(spoken + "".join(san_move))
     return spoken + "".join(san_move)
 
 
@@ -78,7 +77,12 @@ def transcribe_move():
     if file and allowed_file(file.filename):
         audio_content = file.read()
 
-        fen = request.form.get("fen", Board().fen())
+        fen = request.form.get(
+            "fen",
+            Board(
+                "r1bqkb1r/ppp1nppp/3p1n2/4p3/2BNP3/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 6"
+            ).fen(),
+        )
         board = Board(fen)
 
         speech_context = get_speech_context_from_board(board)
