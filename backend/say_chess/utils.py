@@ -8,9 +8,15 @@ def create_success_response(data, message="Success"):
     return jsonify(response)
 
 
-def create_error_response(error_key: str, status_code: int):
+def create_error_response(error_key: str, status_code: int, data={}):
     error_info = ERROR_CODES[error_key]
     response = jsonify(
-        {"error": {"code": error_info["code"], "message": error_info["message"]}}
+        {
+            "error": {
+                "code": error_info["code"],
+                "message": error_info["message"],
+                "data": data,
+            }
+        }
     )
     return make_response(response, status_code)

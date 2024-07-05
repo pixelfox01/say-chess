@@ -50,17 +50,23 @@ def san_to_spoken(san_move):
         spoken += piece_names[san_move[0]] + " "
         san_move = san_move[1:]
 
+    # if "x" in san_move:
+    #     san_move = san_move.replace("x", "")
+
+    san_move = san_move.replace("+", "")
+    san_move = san_move.replace("x", "")
+
     if "=" in san_move:
         coord, promotion = san_move.split("=")
-        return f"{coord} {piece_names[promotion]}"
+        return f"{' '.join(coord)} {piece_names[promotion]}"
 
-    return spoken + "".join(san_move)
+    return spoken + " ".join(san_move)
 
 
 def get_speech_context_from_board(board):
     legal_moves = list(board.legal_moves)
-    print([board.san(move) for move in legal_moves])
     spoken_moves = [san_to_spoken(board.san(move)) for move in legal_moves]
+    print(spoken_moves)
     return speech.SpeechContext(phrases=spoken_moves, boost=20)
 
 
@@ -76,13 +82,9 @@ def transcribe_move():
 
     if file and allowed_file(file.filename):
         audio_content = file.read()
+        print(f"Received audio content of size: {len(audio_content)} bytes")
 
-        fen = request.form.get(
-            "fen",
-            Board(
-                "r1bqkb1r/ppp1nppp/3p1n2/4p3/2BNP3/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 6"
-            ).fen(),
-        )
+        fen = request.form.get("fen", Board().fen())
         board = Board(fen)
 
         speech_context = get_speech_context_from_board(board)
@@ -104,7 +106,6 @@ def transcribe_gcs(audio_content, speech_context):
 
     audio = speech.RecognitionAudio(content=audio_content)
     config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         audio_channel_count=1,
         speech_contexts=[speech_context],
         language_code="en-US",
@@ -120,6 +121,7 @@ def transcribe_gcs(audio_content, speech_context):
 
 
 def get_move_from_transcription(transcription, board):
+    print(transcription)
     legal_moves = [board.san(move) for move in board.legal_moves]
     spoken_moves = [san_to_spoken(move).lower() for move in legal_moves]
 

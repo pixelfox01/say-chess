@@ -61,22 +61,34 @@ def start_game():
     player1_id = data.get("player1_id")
     player2_id = data.get("player2_id")
 
+    print()
+
     db = get_db()
     cursor = db.cursor()
 
-    ongoing_game_query = """
-        SELECT id FROM game
+    player1_game_query = """
+        SELECT uid FROM game
         WHERE game_status = %s
-        AND (player1_id = %s OR player2_id = %s OR player1_id = %s OR player2_id = %s)
-        LIMIT 1
+        AND (player1_id = %s OR player2_id = %s)
     """
-    cursor.execute(
-        ongoing_game_query, ("ongoing", player1_id, player1_id, player2_id, player2_id)
-    )
-    ongoing_game = cursor.fetchone()
+    player2_game_query = """
+        SELECT uid FROM game
+        WHERE game_status = %s
+        AND (player1_id = %s OR player2_id = %s)
+    """
 
-    if ongoing_game:
-        return create_error_response("PLAYER_IN_GAME", 403)
+    cursor.execute(player1_game_query, ("ongoing", player1_id, player1_id))
+    player1_game = cursor.fetchone()
+
+    cursor.execute(player2_game_query, ("ongoing", player2_id, player2_id))
+    player2_game = cursor.fetchone()
+
+    if player1_game or player2_game:
+        return create_error_response(
+            "PLAYER_IN_GAME",
+            403,
+            {"player1_game": player1_game, "player2_game": player2_game},
+        )
 
     game_status = "ongoing"
     starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -107,7 +119,7 @@ def get_game_details(game_uid):
         cursor.execute(query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND", 404)
+            return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         response_data = {
             "uid": game[0],
@@ -137,7 +149,7 @@ def game_status(game_uid):
         game = cursor.fetchone()
 
         if game is None:
-            return create_error_response("GAME_NOT_FOUND", 404)
+            return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         return create_success_response(game[0], "Game status retrieved successfully")
 
@@ -158,11 +170,11 @@ def make_move(game_uid):
         game = cursor.fetchone()
 
         if game is None:
-            return create_error_response("GAME_NOT_FOUND", 404)
+            return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED", 403)
+            return create_error_response("GAME_ENDED", 403, {"game": game})
 
         game_fen = game[7]
 
@@ -171,11 +183,11 @@ def make_move(game_uid):
             uci_move = board.parse_san(san_move)
             board.push_san(san_move)
         except chess.InvalidMoveError:
-            return create_error_response("INVALID_MOVE", 403)
+            return create_error_response("INVALID_MOVE", 403, {"move": san_move})
         except chess.IllegalMoveError:
-            return create_error_response("ILLEGAL_MOVE", 403)
+            return create_error_response("ILLEGAL_MOVE", 403, {"move": san_move})
         except chess.AmbiguousMoveError:
-            return create_error_response("AMBIGUOUS_MOVE", 403)
+            return create_error_response("AMBIGUOUS_MOVE", 403, {"move": san_move})
 
         max_move_num_query = """
             SELECT COALESCE(MAX(move_number), 0)
@@ -214,7 +226,7 @@ def make_move(game_uid):
             cur_player = result[0].split()[1]
             end_game_query = """
                 UPDATE game
-                SET game_status = %s
+                SET game_status = %s, ended_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """
 
@@ -230,7 +242,7 @@ def make_move(game_uid):
 
         db.commit()
 
-        response = {"uci_move": uci_move, "game_status": game_status}
+        response = {"uci_move": uci_move, "game_status": game_status, "fen": cur_fen}
 
         return create_success_response(response, "Move processed successfully")
 
@@ -247,11 +259,11 @@ def abort_game(game_uid):
         cursor.execute(game_query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND", 404)
+            return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED", 403)
+            return create_error_response("GAME_ENDED", 403, {"game": game})
 
         moves_query = """
             SELECT id
@@ -261,7 +273,7 @@ def abort_game(game_uid):
         game_id = game[0]
         cursor.execute(moves_query, (game_id,))
         if cursor.fetchone() is not None:
-            return create_error_response("GAME_STARTED", 403)
+            return create_error_response("GAME_STARTED", 403, {"game": game})
 
         game_abort_query = """
             UPDATE game
@@ -273,7 +285,7 @@ def abort_game(game_uid):
         result = cursor.fetchone()
 
         if result is None:
-            return create_error_response("UPDATE_FAILED", 500)
+            return create_error_response("UPDATE_FAILED", 500, {"id": game_uid})
 
         db.commit()
 
@@ -302,11 +314,11 @@ def draw_game(game_uid):
         cursor.execute(game_query, (str(game_uid),))
         game = cursor.fetchone()
         if game is None:
-            return create_error_response("GAME_NOT_FOUND", 404)
+            return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         game_status = game[6]
         if game_status != "ongoing":
-            return create_error_response("GAME_ENDED", 403)
+            return create_error_response("GAME_ENDED", 403, {"game": game})
 
         game_end_query = """
             UPDATE game
@@ -319,7 +331,7 @@ def draw_game(game_uid):
         result = cursor.fetchone()
 
         if result is None:
-            return create_error_response("UPDATE_FAILED", 500)
+            return create_error_response("UPDATE_FAILED", 500, {"game": game})
 
         db.commit()
 
