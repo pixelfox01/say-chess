@@ -1,12 +1,27 @@
 import click
 import psycopg2
 from flask import current_app, g
+from google.cloud.sql.connector import Connector
+import pg8000
+
+connector = Connector()
+
+
+def get_db_connection():
+    db_user = current_app.config["DB_USER"]
+    db_password = current_app.config["DB_PASSWORD"]
+    db_name = current_app.config["DB_NAME"]
+    db_instance = current_app.config["DB_INSTANCE"]
+
+    conn = connector.connect(
+        db_instance, "pg8000", user=db_user, password=db_password, db=db_name
+    )
+    return conn
 
 
 def get_db():
     if "db" not in g:
-        db_url = current_app.config["DATABASE_URL"]
-        g.db = psycopg2.connect(db_url)
+        g.db = get_db_connection()
     return g.db
 
 

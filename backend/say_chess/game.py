@@ -110,7 +110,8 @@ def start_game():
 @bp.route("/<uuid:game_uid>", methods=["GET"])
 def get_game_details(game_uid):
     db = get_db()
-    with db.cursor() as cursor:
+    cursor = db.cursor()
+    try:
         query = """
             SELECT  uid, player1_id, player2_id, started_at, ended_at, game_status, fen
             FROM game
@@ -134,12 +135,15 @@ def get_game_details(game_uid):
         return create_success_response(
             response_data, "Game details retrieved successfully"
         )
+    finally:
+        cursor.close()
 
 
 @bp.route("/<uuid:game_uid>/status", methods=["GET"])
 def game_status(game_uid):
     db = get_db()
-    with db.cursor() as cursor:
+    cursor = db.cursor()
+    try:
         game_query = """
             SELECT game_status
             FROM game
@@ -152,6 +156,8 @@ def game_status(game_uid):
             return create_error_response("GAME_NOT_FOUND", 404, {"id": game_uid})
 
         return create_success_response(game[0], "Game status retrieved successfully")
+    finally:
+        cursor.close()
 
 
 @bp.route("/<uuid:game_uid>/move", methods=["POST"])
@@ -160,7 +166,8 @@ def make_move(game_uid):
     san_move = data.get("move")
 
     db = get_db()
-    with db.cursor() as cursor:
+    cursor = db.cursor()
+    try:
         game_query = """
             SELECT id, uid, player1_id, player2_id, started_at, ended_at, game_status, fen
             FROM game
@@ -245,12 +252,15 @@ def make_move(game_uid):
         response = {"uci_move": uci_move, "game_status": game_status, "fen": cur_fen}
 
         return create_success_response(response, "Move processed successfully")
+    finally:
+        cursor.close()
 
 
 @bp.route("/<uuid:game_uid>/abort", methods=["POST"])
 def abort_game(game_uid):
     db = get_db()
-    with db.cursor() as cursor:
+    cursor = db.cursor()
+    try:
         game_query = """
             SELECT id, uid, player1_id, player2_id, started_at, ended_at, game_status, fen
             FROM game
@@ -300,12 +310,15 @@ def abort_game(game_uid):
         }
 
         return create_success_response(response_data, "Game aborted successfully")
+    finally:
+        cursor.close()
 
 
 @bp.route("/<uuid:game_uid>/draw", methods=["POST"])
 def draw_game(game_uid):
     db = get_db()
-    with db.cursor() as cursor:
+    cursor = db.cursor()
+    try:
         game_query = """
             SELECT id, uid, player1_id, player2_id, started_at, ended_at, game_status, fen
             FROM game
@@ -346,3 +359,5 @@ def draw_game(game_uid):
         }
 
         return create_success_response(response_data, "Game drawn successfully")
+    finally:
+        cursor.close()
